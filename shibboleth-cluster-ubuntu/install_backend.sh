@@ -16,18 +16,29 @@ apt-get	install libmysql-java
 # Allow remote connection
 sed -i "s/bind-address.*/bind-address = 0.0.0.0/" /etc/mysql/my.cnf
 
+# Create secure MySQL configuration file to avoid password exposure in process lists
+cat > /tmp/mysql_config.cnf << EOF
+[client]
+user=root
+password=$mysqlpassword
+EOF
+chmod 600 /tmp/mysql_config.cnf
+
 #create database
-mysql -u root -p$mysqlpassword -e "create database idp_db";
+mysql --defaults-extra-file=/tmp/mysql_config.cnf -e "create database idp_db";
 
 #create table 
-mysql -u root -p$mysqlpassword -e "use idp_db; create table StorageRecords(context varchar(255) NOT NULL,id varchar(255) NOT NULL,expires bigint(20) DEFAULT NULL,value longtext NOT NULL,version bigint(20) NOT NULL,PRIMARY KEY(context,id))";
+mysql --defaults-extra-file=/tmp/mysql_config.cnf -e "use idp_db; create table StorageRecords(context varchar(255) NOT NULL,id varchar(255) NOT NULL,expires bigint(20) DEFAULT NULL,value longtext NOT NULL,version bigint(20) NOT NULL,PRIMARY KEY(context,id))";
 
 #create user & grant all privileges
-mysql -u root -p$mysqlpassword -e "create user $mySqlUser@'localhost' identified by '$mySqlPasswordForUser'";
-mysql -u root -p$mysqlpassword -e "grant all privileges on *.* to $mySqlUser@'localhost'";
+mysql --defaults-extra-file=/tmp/mysql_config.cnf -e "create user $mySqlUser@'localhost' identified by '$mySqlPasswordForUser'";
+mysql --defaults-extra-file=/tmp/mysql_config.cnf -e "grant all privileges on *.* to $mySqlUser@'localhost'";
 
-mysql -u root -p$mysqlpassword -e "create user $mySqlUser@'%' identified by '$mySqlPasswordForUser'";
-mysql -u root -p$mysqlpassword -e "grant all privileges on *.* to $mySqlUser@'%'";
+mysql --defaults-extra-file=/tmp/mysql_config.cnf -e "create user $mySqlUser@'%' identified by '$mySqlPasswordForUser'";
+mysql --defaults-extra-file=/tmp/mysql_config.cnf -e "grant all privileges on *.* to $mySqlUser@'%'";
+
+# Clean up the temporary configuration file
+rm -f /tmp/mysql_config.cnf
 
 #restart mysql
 service mysql restart 
