@@ -67,7 +67,7 @@ echo "==============>Adding JSTL to tomcat8"
 
 cd /usr/share/tomcat8/lib
 wget http://central.maven.org/maven2/jstl/jstl/1.2/jstl-1.2.jar
-chmod 777 jstl-1.2.jar
+chmod 644 jstl-1.2.jar
 
 #START Shibboleth installation
 

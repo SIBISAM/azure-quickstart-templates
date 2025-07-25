@@ -344,8 +344,34 @@ configure_mysql() {
 
     create_mycnf
     /etc/init.d/mysql restart
-    mysql_secret=$(awk '/password/{print $NF}' ${HOME}/.mysql_secret)
-    mysqladmin -u root --password=${mysql_secret} password ${ROOTPWD}
+    
+    # Check if MySQL started successfully
+    if [ $? -ne 0 ]; then
+        echo "ERROR: MySQL failed to start"
+        exit 1
+    fi
+    
+    # Handle MySQL password setup with proper error checking
+    # Try to use temporary root password if available, otherwise assume no password initially
+    if [ -f "${HOME}/.mysql_secret" ]; then
+        mysql_secret=$(awk '/password/{print $NF}' ${HOME}/.mysql_secret)
+        mysqladmin -u root --password="${mysql_secret}" password "${ROOTPWD}"
+    else
+        # For newer MySQL versions or fresh installs, try without initial password
+        mysqladmin -u root password "${ROOTPWD}" 2>/dev/null
+        if [ $? -ne 0 ]; then
+            # If that fails, try with empty password
+            mysqladmin -u root --password="" password "${ROOTPWD}" 2>/dev/null
+        fi
+    fi
+    
+    # Verify we can connect with the new password
+    mysql -u root -p"${ROOTPWD}" -e "SELECT 1;" >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to set MySQL root password or connect to MySQL"
+        exit 1
+    fi
+
 if [ ${NODEID} -eq 1 ];
 then
     mysql -u root -p"${ROOTPWD}" <<EOF
@@ -355,6 +381,12 @@ CREATE USER 'admin'@'%' IDENTIFIED BY '${ROOTPWD}';
 GRANT ALL PRIVILEGES ON *.* TO 'admin'@'%' with grant option;
 FLUSH PRIVILEGES;
 EOF
+    
+    # Verify the SQL operations succeeded
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to configure MySQL users and privileges"
+        exit 1
+    fi
 fi
     configure_mysql_replication
     create_mysql_probe

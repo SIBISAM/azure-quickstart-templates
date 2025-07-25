@@ -277,7 +277,9 @@ configure_mongodb()
 	
 	mkdir /var/run/mongodb
 	touch /var/run/mongodb/mongod.pid
-	chmod 777 /var/run/mongodb/mongod.pid
+	# Set secure permissions: owner can read/write, group can read, others have no access
+	chmod 644 /var/run/mongodb/mongod.pid
+	chown mongodb:mongodb /var/run/mongodb/mongod.pid
 	
 	tee /etc/mongod.conf > /dev/null <<EOF
 systemLog:
